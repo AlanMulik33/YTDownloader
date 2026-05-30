@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>YT Downloader - Download Video & Musik YouTube</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .glass-dark {
+            background: rgba(30, 30, 50, 0.9);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(102, 126, 234, 0.5);
+        }
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        .btn-primary:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .mode-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        .mode-card:hover {
+            transform: translateY(-2px);
+            border-color: #e0e7ff;
+        }
+        .mode-card.active {
+            border-color: #667eea;
+            background: linear-gradient(135deg, rgba(102,126,234,0.08) 0%, rgba(118,75,162,0.08) 100%);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+        }
+
+        .res-card {
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .res-card:hover {
+            border-color: #667eea;
+            transform: scale(1.02);
+        }
+        .res-card.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .job-enter {
+            animation: jobSlide 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes jobSlide {
+            from { opacity: 0; transform: translateY(20px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .shimmer {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .progress-fill {
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .toast-enter {
+            animation: toastIn 0.3s ease forwards;
+        }
+        .toast-exit {
+            animation: toastOut 0.3s ease forwards;
+        }
+        @keyframes toastIn {
+            from { transform: translateY(100px) scale(0.9); opacity: 0; }
+            to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        @keyframes toastOut {
+            from { transform: translateY(0) scale(1); opacity: 1; }
+            to { transform: translateY(100px) scale(0.9); opacity: 0; }
+        }
+
+        .pulse-dot {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .preview-thumb {
+            aspect-ratio: 16/9;
+            object-fit: cover;
+        }
+
+        /* Hide scrollbar but keep functionality */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Touch friendly */
+        .touch-btn {
+            min-height: 44px;
+            min-width: 44px;
+        }
+
+        .break-anywhere {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <!-- Navbar -->
+    <nav class="glass sticky top-0 z-50 border-b border-white/20 shadow-sm">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl btn-primary flex items-center justify-center text-white shadow-lg">
+                    <i class="fas fa-cloud-download-alt text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-gray-800 leading-tight">YT Downloader</h1>
+                    <p class="text-[10px] text-gray-500 leading-tight">Download Video & Musik</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <div id="ffmpegBadge" class="hidden px-2 py-1 bg-green-50 border border-green-200 rounded-full text-[10px] font-semibold text-green-700">
+                    <i class="fas fa-check-circle mr-1"></i>ffmpeg
+                </div>
+                <div class="flex items-center gap-1.5 px-2 py-1 bg-green-50 rounded-full border border-green-200">
+                    <div class="w-2 h-2 bg-green-500 rounded-full pulse-dot"></div>
+                    <span class="text-[10px] font-semibold text-green-700" id="serverStatus">Online</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-5xl mx-auto px-4 py-6 space-y-5">
+
+        <!-- Hero / Info -->
+        <div class="glass rounded-2xl p-5 shadow-lg">
+            <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <i class="fas fa-info text-blue-500"></i>
+                </div>
+                <div>
+                    <h2 class="font-bold text-gray-800 text-sm mb-1">Cara Pakai</h2>
+                    <ol class="text-xs text-gray-600 space-y-1 list-decimal list-inside leading-relaxed">
+                        <li>Masukkan link YouTube (video atau playlist)</li>
+                        <li>Klik <strong>Analisis</strong> untuk melihat info video</li>
+                        <li>Pilih mode <strong>Video</strong> atau <strong>Musik</strong></li>
+                        <li>Pilih kualitas yang tersedia</li>
+                        <li>Klik <strong>Download</strong> dan tunggu proses selesai</li>
+                        <li>File tersimpan di folder <code class="bg-gray-100 px-1 rounded text-purple-700">downloads/</code> di PC server</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <!-- URL Input Section -->
+        <div class="glass rounded-2xl p-5 md:p-6 shadow-lg">
+            <label class="block text-sm font-bold text-gray-700 mb-3">
+                <i class="fab fa-youtube text-red-500 mr-1.5"></i>Link YouTube
+            </label>
+
+            <div class="flex flex-col sm:flex-row gap-3">
+                <div class="relative flex-1">
+                    <input 
+                        type="url" 
+                        id="videoUrl" 
+                        placeholder="https://www.youtube.com/watch?v=..." 
+                        class="w-full pl-11 pr-4 py-3.5 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition text-gray-700 text-sm bg-white/80"
+                    >
+                    <i class="fab fa-youtube absolute left-3.5 top-1/2 -translate-y-1/2 text-red-500 text-lg"></i>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="pasteUrl()" class="touch-btn px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-600 transition flex items-center gap-2 text-sm font-medium">
+                        <i class="fas fa-paste"></i>
+                        <span class="hidden sm:inline">Tempel</span>
+                    </button>
+                    <button onclick="analyzeUrl()" id="analyzeBtn" class="touch-btn px-5 py-3 btn-primary text-white rounded-xl font-bold text-sm shadow-lg flex items-center gap-2">
+                        <i class="fas fa-search"></i>
+                        <span>Analisis</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Detail Panel -->
+        <div id="errorPanel" class="hidden glass rounded-2xl p-4 shadow-lg border border-red-100 job-enter">
+            <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-triangle-exclamation text-red-500"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p id="errorTitle" class="font-bold text-sm text-red-700">Terjadi error</p>
+                            <p class="text-xs text-red-500 mt-0.5">Bagian: <span id="errorPart" class="font-semibold">-</span></p>
+                        </div>
+                        <button onclick="hideErrorPanel()" class="touch-btn w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 transition flex items-center justify-center flex-shrink-0" title="Tutup error">
+                            <i class="fas fa-times text-xs"></i>
+                        </button>
+                    </div>
+                    <p id="errorDetail" class="mt-3 text-xs text-gray-700 leading-relaxed break-anywhere"></p>
+                    <div id="errorHintWrap" class="hidden mt-3 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2 text-xs text-amber-700 leading-relaxed">
+                        <i class="fas fa-lightbulb mr-1.5"></i><span id="errorHint"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Section (Hidden by default) -->
+        <div id="previewSection" class="hidden glass rounded-2xl p-5 shadow-lg job-enter">
+            <div class="flex flex-col sm:flex-row gap-4">
+                <div class="w-full sm:w-40 md:w-48 flex-shrink-0">
+                    <div class="relative rounded-xl overflow-hidden bg-gray-200 shadow-md">
+                        <img id="previewThumb" src="" alt="Thumbnail" class="preview-thumb w-full">
+                        <div id="previewDuration" class="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">0:00</div>
+                    </div>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h3 id="previewTitle" class="font-bold text-gray-800 text-base md:text-lg leading-snug mb-1 line-clamp-2">Judul Video</h3>
+                    <p id="previewChannel" class="text-sm text-gray-500 mb-2">Channel Name</p>
+                    <div class="flex flex-wrap gap-2">
+                        <span id="previewType" class="px-2.5 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold">Video</span>
+                        <span id="previewFfmpeg" class="hidden px-2.5 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold">
+                            <i class="fas fa-check mr-1"></i>ffmpeg OK
+                        </span>
+                        <span id="previewNoFfmpeg" class="hidden px-2.5 py-1 bg-yellow-100 text-yellow-700 rounded-lg text-xs font-bold">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>Tanpa ffmpeg
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mode Selector -->
+        <div id="modeSection" class="hidden glass rounded-2xl p-5 shadow-lg job-enter">
+            <label class="block text-sm font-bold text-gray-700 mb-3">Pilih Mode</label>
+            <div class="grid grid-cols-2 gap-3">
+                <div onclick="setMode('video', this)" id="modeVideo" class="mode-card active rounded-xl p-4 border-2 border-gray-100 bg-white">
+                    <div class="flex flex-col items-center text-center gap-2">
+                        <div class="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
+                            <i class="fas fa-video text-purple-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-gray-800">Video</div>
+                            <div class="text-xs text-gray-500 mt-0.5">MP4 dengan resolusi</div>
+                        </div>
+                    </div>
+                </div>
+                <div onclick="setMode('audio', this)" id="modeAudio" class="mode-card rounded-xl p-4 border-2 border-gray-100 bg-white">
+                    <div class="flex flex-col items-center text-center gap-2">
+                        <div class="w-12 h-12 rounded-full bg-pink-100 flex items-center justify-center">
+                            <i class="fas fa-music text-pink-600 text-xl"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-gray-800">Musik</div>
+                            <div class="text-xs text-gray-500 mt-0.5">Audio Only (M4A)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resolution Section -->
+        <div id="resolutionSection" class="hidden glass rounded-2xl p-5 shadow-lg job-enter">
+            <div class="flex items-center justify-between mb-3">
+                <label class="block text-sm font-bold text-gray-700">Pilih Kualitas</label>
+                <span class="text-xs text-gray-400">Estimasi ukuran</span>
+            </div>
+            <div id="resolutionGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                <!-- Generated by JS -->
+            </div>
+        </div>
+
+        <!-- Download Button -->
+        <button onclick="startDownload()" id="downloadBtn" class="hidden w-full py-4 btn-primary text-white font-bold text-lg rounded-xl shadow-lg flex items-center justify-center gap-3 touch-btn">
+            <i class="fas fa-cloud-download-alt text-xl"></i>
+            <span>Mulai Download</span>
+        </button>
+
+        <!-- Jobs Queue -->
+        <div class="glass rounded-2xl p-5 shadow-lg">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-list-ul text-purple-600"></i>
+                    Antrian Download
+                </h2>
+                <span id="queueCount" class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-bold">0 aktif</span>
+            </div>
+            <div id="jobsContainer" class="space-y-3">
+                <div id="emptyState" class="text-center py-10 text-gray-400">
+                    <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-gray-100 flex items-center justify-center">
+                        <i class="fas fa-inbox text-2xl"></i>
+                    </div>
+                    <p class="text-sm">Belum ada download.</p>
+                    <p class="text-xs mt-1 opacity-70">Masukkan link YouTube untuk memulai.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Guide / FAQ Section -->
+        <div class="glass rounded-2xl p-5 shadow-lg">
+            <h2 class="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <i class="fas fa-question-circle text-purple-600"></i>
+                Panduan Singkat
+            </h2>
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="flex gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0 text-blue-600 font-bold text-xs">1</div>
+                    <div>
+                        <h3 class="font-semibold text-sm text-gray-800">PC sebagai Server</h3>
+                        <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">Program berjalan di PC. HP hanya mengakses web untuk memilih video yang akan di-download.</p>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0 text-blue-600 font-bold text-xs">2</div>
+                    <div>
+                        <h3 class="font-semibold text-sm text-gray-800">File Tersimpan di PC</h3>
+                        <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">Semua hasil download masuk ke folder <code class="bg-gray-100 px-1 rounded">downloads/</code> di PC yang menjalankan server.</p>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0 text-blue-600 font-bold text-xs">3</div>
+                    <div>
+                        <h3 class="font-semibold text-sm text-gray-800">Akses dari HP</h3>
+                        <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">Pastikan HP & PC di WiFi yang sama. Buka browser HP, ketik IP PC yang muncul saat server jalan.</p>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0 text-blue-600 font-bold text-xs">4</div>
+                    <div>
+                        <h3 class="font-semibold text-sm text-gray-800">Butuh ffmpeg?</h3>
+                        <p class="text-xs text-gray-500 mt-0.5 leading-relaxed">Untuk resolusi 720p ke atas. Tanpa ffmpeg tetap bisa download 360p/480p dan Audio Only.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 pt-4 border-t border-gray-100">
+                <div class="flex items-start gap-2 text-xs text-gray-400">
+                    <i class="fas fa-lightbulb text-yellow-500 mt-0.5"></i>
+                    <p>Tip: Klik tombol <strong>Tempel</strong> untuk otomatis mengisi link dari clipboard. Gunakan mode <strong>Musik</strong> untuk menghemat penyimpanan.</p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toastContainer" class="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50 pointer-events-none"></div>
+
+    <script>
+        // Config
+        let API_BASE = '';
+        const host = window.location.host;
+        const proto = window.location.protocol;
+        if (host.includes('localhost') || host.includes('127.0.0.1')) {
+            API_BASE = 'http://localhost:5000/api';
+        } else {
+            API_BASE = `${proto}//${host}/api`;
+        }
+
+        // State
+        let currentMode = 'video';
+        let selectedResolution = 'best';
+        let currentResolutions = [];
+        let isPlaylist = false;
+        let currentUrl = '';
+        const activeJobs = new Map();
+        let isAnalyzing = false;
+
+        async function readJsonResponse(res) {
+            try {
+                return await res.json();
+            } catch (e) {
+                return {
+                    success: false,
+                    error: `Server membalas ${res.status} ${res.statusText || ''}`.trim(),
+                    error_stage: 'Response server',
+                    error_hint: 'Coba refresh halaman atau restart server jika response bukan JSON.'
+                };
+            }
+        }
+
+        function getErrorInfo(data = {}, fallbackPart = 'Aplikasi', fallbackMessage = 'Terjadi error') {
+            return {
+                part: data.error_part || data.error_stage || fallbackPart,
+                message: data.error || data.message || fallbackMessage,
+                hint: data.error_hint || ''
+            };
+        }
+
+        function escapeHtml(value) {
+            return String(value).replace(/[&<>"']/g, (char) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[char]));
+        }
+
+        function compactMessage(message, max = 140) {
+            const text = String(message || '');
+            return text.length > max ? text.slice(0, max - 3) + '...' : text;
+        }
+
+        function showErrorPanel(part, message, hint = '', title = 'Terjadi error') {
+            const panel = document.getElementById('errorPanel');
+            document.getElementById('errorTitle').textContent = title;
+            document.getElementById('errorPart').textContent = part || '-';
+            document.getElementById('errorDetail').textContent = message || 'Tidak ada detail error.';
+
+            const hintWrap = document.getElementById('errorHintWrap');
+            if (hint) {
+                document.getElementById('errorHint').textContent = hint;
+                hintWrap.classList.remove('hidden');
+            } else {
+                document.getElementById('errorHint').textContent = '';
+                hintWrap.classList.add('hidden');
+            }
+
+            panel.classList.remove('hidden');
+        }
+
+        function hideErrorPanel() {
+            document.getElementById('errorPanel').classList.add('hidden');
+        }
+
+        // Init
+        window.addEventListener('load', async () => {
+            try {
+                const res = await fetch(`${API_BASE}/health`);
+                const data = await res.json();
+                if (data.success && data.ffmpeg) {
+                    document.getElementById('ffmpegBadge').classList.remove('hidden');
+                }
+            } catch (e) {
+                document.getElementById('serverStatus').textContent = 'Offline';
+                document.getElementById('serverStatus').parentElement.className = 'flex items-center gap-1.5 px-2 py-1 bg-red-50 rounded-full border border-red-200';
+                showErrorPanel('Koneksi ke server', 'Server offline. Pastikan python app.py sudah jalan.', 'Jalankan ulang server, lalu refresh halaman ini.', 'Server offline');
+                showToast('Server offline. Pastikan python app.py sudah jalan.', 'error');
+            }
+        });
+
+        // Paste URL
+        async function pasteUrl() {
+            try {
+                const text = await navigator.clipboard.readText();
+                document.getElementById('videoUrl').value = text;
+                showToast('Link berhasil di-tempel!', 'success');
+            } catch (e) {
+                showToast('Tidak bisa mengakses clipboard. Paste manual (Ctrl+V).', 'warning');
+            }
+        }
+
+        // Analyze URL
+        async function analyzeUrl() {
+            const url = document.getElementById('videoUrl').value.trim();
+            if (!url) {
+                showErrorPanel('Validasi link', 'Masukkan link YouTube terlebih dahulu!', 'Isi kolom link, lalu klik Analisis.', 'Link belum diisi');
+                showToast('Masukkan link YouTube terlebih dahulu!', 'error');
+                return;
+            }
+            if (!url.includes('youtube.com') && !url.includes('youtu.be')) {
+                showErrorPanel('Validasi link', 'Hanya mendukung link YouTube.', 'Gunakan link dari youtube.com atau youtu.be.', 'Link tidak didukung');
+                showToast('Hanya mendukung link YouTube!', 'error');
+                return;
+            }
+
+            hideErrorPanel();
+            currentUrl = url;
+            isAnalyzing = true;
+            const btn = document.getElementById('analyzeBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i><span>Menganalisis...</span>';
+
+            try {
+                const res = await fetch(`${API_BASE}/info`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({url})
+                });
+                const data = await readJsonResponse(res);
+
+                if (data.success) {
+                    hideErrorPanel();
+                    showPreview(data);
+                    document.getElementById('modeSection').classList.remove('hidden');
+
+                    if (currentMode === 'video') {
+                        document.getElementById('resolutionSection').classList.remove('hidden');
+                        renderResolutions(data.resolutions, data.has_ffmpeg);
+                    }
+
+                    document.getElementById('downloadBtn').classList.remove('hidden');
+                    showToast(`"${data.title.substring(0, 40)}${data.title.length > 40 ? '...' : ''}" siap di-download!`, 'success');
+                } else {
+                    const err = getErrorInfo(data, 'Analisis video', 'Gagal menganalisis video');
+                    showErrorPanel(err.part, err.message, err.hint, 'Analisis gagal');
+                    showToast(err.message, 'error');
+                }
+            } catch (err) {
+                showErrorPanel('Koneksi ke server', 'Tidak terhubung ke server.', 'Pastikan python app.py masih berjalan dan alamat web yang dibuka sudah benar.', 'Server tidak terhubung');
+                showToast('Tidak terhubung ke server.', 'error');
+            }
+
+            isAnalyzing = false;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-search"></i><span>Analisis</span>';
+        }
+
+        function showPreview(data) {
+            const section = document.getElementById('previewSection');
+            document.getElementById('previewThumb').src = data.thumbnail || '';
+            document.getElementById('previewTitle').textContent = data.title;
+            document.getElementById('previewChannel').textContent = data.uploader;
+            document.getElementById('previewDuration').textContent = data.duration || '0:00';
+
+            const typeBadge = document.getElementById('previewType');
+            if (data.is_playlist) {
+                typeBadge.textContent = 'Playlist';
+                typeBadge.className = 'px-2.5 py-1 bg-orange-100 text-orange-700 rounded-lg text-xs font-bold';
+                isPlaylist = true;
+            } else {
+                typeBadge.textContent = 'Video';
+                typeBadge.className = 'px-2.5 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-bold';
+                isPlaylist = false;
+            }
+
+            if (data.has_ffmpeg) {
+                document.getElementById('previewFfmpeg').classList.remove('hidden');
+                document.getElementById('previewNoFfmpeg').classList.add('hidden');
+            } else {
+                document.getElementById('previewFfmpeg').classList.add('hidden');
+                document.getElementById('previewNoFfmpeg').classList.remove('hidden');
+            }
+
+            section.classList.remove('hidden');
+        }
+
+        function setMode(mode, el) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+
+            const resSection = document.getElementById('resolutionSection');
+            if (mode === 'audio') {
+                resSection.classList.add('hidden');
+            } else {
+                resSection.classList.remove('hidden');
+            }
+        }
+
+        function renderResolutions(resolutions, hasFfmpeg) {
+            currentResolutions = resolutions;
+            const grid = document.getElementById('resolutionGrid');
+
+            if (!resolutions || resolutions.length === 0) {
+                grid.innerHTML = '<div class="col-span-full text-center py-4 text-gray-400 text-sm">Tidak ada info resolusi</div>';
+                return;
+            }
+
+            let html = '';
+            resolutions.forEach((res) => {
+                const isBest = res.value === 'best';
+                const isSelected = isBest ? 'selected border-purple-500' : 'border-gray-200';
+                const bgClass = isBest ? 'bg-purple-50' : 'bg-white';
+
+                html += `
+                    <div onclick="selectRes('${res.value}', this)" 
+                         class="res-card ${isSelected} ${bgClass} border-2 rounded-xl p-3 text-center select-none">
+                        <div class="font-bold text-sm text-gray-800">${res.label}</div>
+                        ${res.size ? `<div class="text-xs text-gray-500 mt-0.5">${res.size}</div>` : ''}
+                        ${!isBest ? '<div class="text-[10px] text-gray-400 mt-0.5">Video</div>' : '<div class="text-[10px] text-purple-600 mt-0.5 font-medium">Auto</div>'}
+                    </div>
+                `;
+            });
+            grid.innerHTML = html;
+            selectedResolution = 'best';
+        }
+
+        function selectRes(val, el) {
+            selectedResolution = val;
+            document.querySelectorAll('.res-card').forEach(c => {
+                c.classList.remove('selected', 'border-purple-500', 'bg-purple-50');
+                c.classList.add('border-gray-200', 'bg-white');
+            });
+            el.classList.remove('border-gray-200', 'bg-white');
+            el.classList.add('selected', 'border-purple-500', 'bg-purple-50');
+        }
+
+        async function startDownload() {
+            if (!currentUrl) {
+                showErrorPanel('Validasi link', 'Analisis video terlebih dahulu!', 'Klik Analisis sampai preview video muncul, baru mulai download.', 'Download belum siap');
+                showToast('Analisis video terlebih dahulu!', 'error');
+                return;
+            }
+
+            hideErrorPanel();
+            const btn = document.getElementById('downloadBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin text-xl"></i><span>Menambahkan...</span>';
+
+            try {
+                const res = await fetch(`${API_BASE}/download`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        url: currentUrl,
+                        resolution: currentMode === 'audio' ? 'best' : selectedResolution,
+                        mode: currentMode
+                    })
+                });
+                const data = await readJsonResponse(res);
+
+                if (data.success) {
+                    hideErrorPanel();
+                    const msg = isPlaylist ? 'Playlist ditambahkan ke antrian!' : 'Download ditambahkan ke antrian!';
+                    showToast(msg, 'success');
+                    addJobToUI(data.job_id, currentUrl, currentMode);
+                    pollStatus(data.job_id);
+                } else {
+                    const err = getErrorInfo(data, 'Memulai download', 'Gagal memulai download');
+                    showErrorPanel(err.part, err.message, err.hint, 'Download gagal dimulai');
+                    showToast(err.message, 'error');
+                }
+            } catch (err) {
+                showErrorPanel('Koneksi ke server', 'Tidak terhubung ke server.', 'Pastikan python app.py masih berjalan dan alamat web yang dibuka sudah benar.', 'Server tidak terhubung');
+                showToast('Tidak terhubung ke server.', 'error');
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-cloud-download-alt text-xl"></i><span>Mulai Download</span>';
+        }
+
+        async function cancelJob(jobId) {
+            try {
+                const res = await fetch(`${API_BASE}/cancel/${jobId}`, {method: 'POST'});
+                const data = await readJsonResponse(res);
+                if (data.success) {
+                    showToast('Download dibatalkan.', 'warning');
+                    removeJobFromUI(jobId);
+                } else {
+                    const err = getErrorInfo(data, 'Batal download', 'Gagal membatalkan');
+                    showErrorPanel(err.part, err.message, err.hint, 'Batal download gagal');
+                    showToast(err.message, 'error');
+                }
+            } catch (e) {
+                showErrorPanel('Koneksi ke server', 'Gagal membatalkan download.', 'Pastikan server masih berjalan, lalu coba lagi.', 'Server tidak terhubung');
+                showToast('Gagal membatalkan download.', 'error');
+            }
+        }
+
+        function addJobToUI(jobId, url, mode) {
+            document.getElementById('emptyState').style.display = 'none';
+            const modeLabel = mode === 'audio' ? 'Musik (M4A)' : (isPlaylist ? 'Playlist' : selectedResolution === 'best' ? 'Best Quality' : selectedResolution + 'p');
+            const icon = mode === 'audio' ? 'fa-music' : (isPlaylist ? 'fa-list' : 'fa-video');
+            const colorClass = mode === 'audio' ? 'text-pink-600 bg-pink-100' : 'text-purple-600 bg-purple-100';
+
+            const html = `
+                <div id="job-${jobId}" class="job-enter bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-lg ${colorClass} flex items-center justify-center flex-shrink-0">
+                            <i class="fas ${icon} text-sm"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between mb-1">
+                                <h3 class="font-semibold text-gray-800 text-sm truncate job-title">Menganalisis...</h3>
+                                <span class="job-status px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-[10px] font-bold uppercase tracking-wide">Queued</span>
+                            </div>
+                            <p class="text-[11px] text-gray-400 mb-1 truncate">${url}</p>
+                            <p class="job-step text-[11px] text-gray-500 mb-2 flex items-center gap-1">
+                                <i class="fas fa-location-dot text-[10px] text-purple-400"></i>
+                                <span>Masuk antrian</span>
+                            </p>
+
+                            <div class="flex items-center gap-2 text-[11px] text-gray-500 mb-2.5">
+                                <span class="px-2 py-0.5 bg-gray-100 rounded-md font-medium">${modeLabel}</span>
+                                <span class="job-speed hidden items-center gap-1"><i class="fas fa-tachometer-alt text-[10px]"></i><span class="speed-val">-</span></span>
+                                <span class="job-eta hidden items-center gap-1"><i class="fas fa-clock text-[10px]"></i><span class="eta-val">-</span></span>
+                            </div>
+
+                            <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                                <div class="progress-fill h-full bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full" style="width: 0%"></div>
+                            </div>
+                            <div class="flex justify-between mt-1.5">
+                                <span class="text-[11px] text-gray-500 font-medium job-percent">0%</span>
+                                <span class="text-[11px] text-gray-400 job-size"></span>
+                            </div>
+                            <div class="job-error hidden mt-3 rounded-lg bg-red-50 border border-red-100 p-3">
+                                <div class="flex items-start gap-2 text-red-700">
+                                    <i class="fas fa-triangle-exclamation text-xs mt-0.5 flex-shrink-0"></i>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-xs font-bold">Bagian error: <span class="job-error-stage">-</span></p>
+                                        <p class="job-error-message text-xs mt-1 leading-relaxed break-anywhere"></p>
+                                        <p class="job-error-hint hidden text-[11px] mt-2 text-amber-700 leading-relaxed break-anywhere"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-1.5 flex-shrink-0">
+                            <button onclick="cancelJob('${jobId}')" class="job-cancel touch-btn w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 transition flex items-center justify-center" title="Batal">
+                                <i class="fas fa-times text-xs"></i>
+                            </button>
+                            <a href="${API_BASE}/file/${jobId}" class="job-download hidden touch-btn w-8 h-8 rounded-lg bg-green-500 hover:bg-green-600 text-white transition flex items-center justify-center" title="Download File">
+                                <i class="fas fa-download text-xs"></i>
+                            </a>
+                            <button onclick="removeJobFromUI('${jobId}')" class="job-remove hidden touch-btn w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-500 transition flex items-center justify-center" title="Hapus">
+                                <i class="fas fa-trash text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('jobsContainer').insertAdjacentHTML('afterbegin', html);
+            activeJobs.set(jobId, true);
+            updateQueueCount();
+        }
+
+        async function pollStatus(jobId) {
+            let attempts = 0;
+            const interval = setInterval(async () => {
+                attempts++;
+                if (attempts > 600 || !activeJobs.has(jobId)) { clearInterval(interval); return; }
+                try {
+                    const res = await fetch(`${API_BASE}/status/${jobId}`);
+                    const data = await readJsonResponse(res);
+                    if (!data.success) {
+                        const err = getErrorInfo(data, 'Cek status download', 'Gagal membaca status download');
+                        showErrorPanel(err.part, err.message, err.hint, 'Status download error');
+                        showToast(err.message, 'error');
+                        clearInterval(interval);
+                        return;
+                    }
+                    updateJobUI(jobId, data.data);
+                    if (['completed', 'error', 'cancelled'].includes(data.data.status)) {
+                        clearInterval(interval);
+                        if (data.data.status === 'completed') {
+                            const msg = data.data.is_playlist ? 'Playlist selesai!' : `"${data.data.title}" selesai!`;
+                            showToast(msg, 'success');
+                        } else if (data.data.status === 'cancelled') {
+                            showToast('Download dibatalkan.', 'warning');
+                        }
+                    }
+                } catch (e) {
+                    showErrorPanel('Cek status download', 'Tidak terhubung ke server saat membaca status download.', 'Pastikan server masih berjalan. Jika server restart, download yang sedang dipantau mungkin perlu dimulai ulang.', 'Status download error');
+                    showToast('Tidak terhubung ke server saat membaca status.', 'error');
+                    clearInterval(interval);
+                }
+            }, 1000);
+        }
+
+        function updateJobUI(jobId, job) {
+            const card = document.getElementById(`job-${jobId}`);
+            if (!card) return;
+
+            if (job.title && job.title !== 'Memuat...') {
+                card.querySelector('.job-title').textContent = job.title;
+            }
+            if (job.step) {
+                const stepText = card.querySelector('.job-step span');
+                if (stepText) stepText.textContent = job.step;
+            }
+
+            const statusBadge = card.querySelector('.job-status');
+            const statusMap = {
+                'queued': {text: 'Queued', class: 'bg-yellow-100 text-yellow-700'},
+                'downloading': {text: 'Downloading', class: 'bg-blue-100 text-blue-700'},
+                'processing': {text: 'Processing', class: 'bg-purple-100 text-purple-700'},
+                'completed': {text: 'Selesai', class: 'bg-green-100 text-green-700'},
+                'cancelled': {text: 'Dibatalkan', class: 'bg-gray-100 text-gray-500'},
+                'error': {text: 'Error', class: 'bg-red-100 text-red-700'}
+            };
+            const st = statusMap[job.status] || statusMap.queued;
+            statusBadge.className = `job-status px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${st.class}`;
+            statusBadge.textContent = st.text;
+
+            const progressBar = card.querySelector('.progress-fill');
+            const progress = Number(job.progress) || 0;
+            progressBar.style.width = (job.status === 'error' ? Math.max(progress, 8) : progress) + '%';
+            progressBar.className = job.status === 'error'
+                ? 'progress-fill h-full bg-red-500 rounded-full'
+                : 'progress-fill h-full bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full';
+
+            const percentEl = card.querySelector('.job-percent');
+            percentEl.textContent = Math.round(progress) + '%';
+            percentEl.classList.remove('text-red-500');
+            percentEl.classList.add('text-gray-500');
+
+            if (job.speed && job.status === 'downloading') {
+                const speedEl = card.querySelector('.job-speed');
+                speedEl.classList.remove('hidden');
+                speedEl.classList.add('inline-flex');
+                card.querySelector('.speed-val').textContent = job.speed;
+            }
+            if (job.eta && job.status === 'downloading') {
+                const etaEl = card.querySelector('.job-eta');
+                etaEl.classList.remove('hidden');
+                etaEl.classList.add('inline-flex');
+                card.querySelector('.eta-val').textContent = job.eta;
+            }
+
+            if (job.filesize) {
+                const sizeMB = (job.filesize / 1024 / 1024).toFixed(1);
+                card.querySelector('.job-size').textContent = sizeMB + ' MB';
+            }
+
+            // Button states
+            const cancelBtn = card.querySelector('.job-cancel');
+            const downloadBtn = card.querySelector('.job-download');
+            const removeBtn = card.querySelector('.job-remove');
+
+            if (job.status === 'completed') {
+                cancelBtn.classList.add('hidden');
+                downloadBtn.classList.remove('hidden');
+                removeBtn.classList.remove('hidden');
+            } else if (['error', 'cancelled'].includes(job.status)) {
+                cancelBtn.classList.add('hidden');
+                downloadBtn.classList.add('hidden');
+                removeBtn.classList.remove('hidden');
+            }
+
+            const errorBox = card.querySelector('.job-error');
+            if (job.status === 'error') {
+                const part = job.error_part || job.error_stage || job.step || 'Download';
+                const message = job.error || 'Download gagal tanpa detail error.';
+                const hint = job.error_hint || '';
+
+                percentEl.textContent = 'Gagal';
+                percentEl.classList.remove('text-gray-500');
+                percentEl.classList.add('text-red-500');
+
+                if (errorBox) {
+                    errorBox.classList.remove('hidden');
+                    errorBox.querySelector('.job-error-stage').textContent = part;
+                    errorBox.querySelector('.job-error-message').textContent = message;
+
+                    const hintEl = errorBox.querySelector('.job-error-hint');
+                    if (hint) {
+                        hintEl.textContent = hint;
+                        hintEl.classList.remove('hidden');
+                    } else {
+                        hintEl.textContent = '';
+                        hintEl.classList.add('hidden');
+                    }
+                }
+
+                showErrorPanel(part, message, hint, 'Download gagal');
+            } else if (errorBox) {
+                errorBox.classList.add('hidden');
+            }
+        }
+
+        function removeJobFromUI(jobId) {
+            activeJobs.delete(jobId);
+            const card = document.getElementById(`job-${jobId}`);
+            if (card) {
+                card.style.opacity = '0';
+                card.style.transform = 'translateX(20px)';
+                setTimeout(() => {
+                    card.remove();
+                    if (activeJobs.size === 0) {
+                        document.getElementById('emptyState').style.display = 'block';
+                    }
+                }, 300);
+            }
+            updateQueueCount();
+        }
+
+        function updateQueueCount() {
+            const active = Array.from(activeJobs.values()).filter(v => v).length;
+            document.getElementById('queueCount').textContent = active + ' aktif';
+        }
+
+        // Toast System
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const id = 'toast-' + Date.now();
+
+            const icons = {
+                success: 'fa-check-circle text-green-400',
+                error: 'fa-exclamation-circle text-red-400',
+                warning: 'fa-exclamation-triangle text-yellow-400',
+                info: 'fa-info-circle text-blue-400'
+            };
+            const bgColors = {
+                success: 'bg-gray-800',
+                error: 'bg-gray-800',
+                warning: 'bg-gray-800',
+                info: 'bg-gray-800'
+            };
+            const iconClass = icons[type] || icons.info;
+            const bgClass = bgColors[type] || bgColors.info;
+            const safeMessage = escapeHtml(compactMessage(message));
+
+            const html = `
+                <div id="${id}" class="toast-enter pointer-events-auto mb-3 ${bgClass} text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-sm">
+                    <i class="fas ${iconClass} text-lg flex-shrink-0"></i>
+                    <span class="flex-1">${safeMessage}</span>
+                    <button onclick="dismissToast('${id}')" class="flex-shrink-0 text-gray-400 hover:text-white transition">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+
+            container.insertAdjacentHTML('beforeend', html);
+
+            setTimeout(() => {
+                dismissToast(id);
+            }, 4000);
+        }
+
+        function dismissToast(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.remove('toast-enter');
+            el.classList.add('toast-exit');
+            setTimeout(() => el.remove(), 300);
+        }
+    </script>
+</body>
+</html>
