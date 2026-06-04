@@ -10,19 +10,9 @@ import zipfile
 import time
 from pathlib import Path
 from datetime import datetime
-import webbrowser
-from threading import Timer
 
 app = Flask(__name__)
 CORS(app)
-
-
-def open_browser():
-    webbrowser.open("http://localhost:5000")
-
-Timer(1.5, open_browser).start()
-
-app.run(host="0.0.0.0", port=5000)
 
 DOWNLOAD_FOLDER = Path("downloads")
 DOWNLOAD_FOLDER.mkdir(exist_ok=True)
